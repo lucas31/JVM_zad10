@@ -9,11 +9,19 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-public class BigIntArrayList implements List<Integer> {
+public class BigIntArrayList implements List<BigInteger> {
 
 	private BigInteger[] array;
 	private int counter = 0;
 	private int iterator = 0;
+	
+	public BigIntArrayList() {
+		this.Initialize();
+	}
+	
+	public BigIntArrayList(int capacity) {
+		this.Initialize(capacity);
+	}
 	
 	private void Initialize() { this.Initialize(10); };
 	private void Reinitialize(boolean clean) {
@@ -33,36 +41,43 @@ public class BigIntArrayList implements List<Integer> {
 	public void Initialize(int capacity) { this.array = new BigInteger[capacity]; };
 	
 	@Override
-	public boolean add(Integer e) {
+	public boolean add(BigInteger e) {
 		if(array == null) return false;
 		else {
-			array[counter] = BigInteger.ZERO;
-			array[counter] = array[counter].add(BigInteger.valueOf(e));
+			if(counter + 1 > array.length) this.Reinitialize(array.length + 10);
+			
+			array[counter] = e;
 			counter++;
 			return true;
 		}
 	}
 
 	@Override
-	public void add(int index, Integer element) {
+	public void add(int index, BigInteger element) {
 		if(index >= array.length) throw new ArrayIndexOutOfBoundsException(index);
 		else {
-			array[index] = BigInteger.ZERO;
-			array[index] = array[index].add(BigInteger.valueOf(element));
+			if(counter + 1 > array.length) this.Reinitialize(array.length + 10);
+			
+			for(int i=counter+1; i>index; i--) array[i] = array[i-1];			
+			array[index] = element;
+						
+			counter++;
 		}		
 	}
-
+	
 	@Override
-	public boolean addAll(Collection<? extends Integer> c) {
+	public boolean addAll(Collection<? extends BigInteger> c) {
 		return this.addAll(counter, c);
 	}
 
 	@Override
-	public boolean addAll(int index, Collection<? extends Integer> c) {
+	public boolean addAll(int index, Collection<? extends BigInteger> c) {
 		if(c.size() > index + this.array.length) this.Reinitialize(index + (c.size() * 2));
-		
-		for(int i=0; i<c.size(); i++) {
-			this.array[index + i] = this.array[index + i].add(BigInteger.valueOf(c.iterator().next()));
+
+		int i=index;
+		for(BigInteger element : c) {
+			this.add(i, element);			
+			i++;
 		}
 		
 		counter = index + c.size();
@@ -77,7 +92,7 @@ public class BigIntArrayList implements List<Integer> {
 	@Override
 	public boolean contains(Object o) {
 		for(int i=0; i<array.length; i++) {
-			if(array[i] == o) return true;
+			if(array[i] != null && array[i].equals(o)) return true;
 		}
 		return false;
 	}
@@ -91,9 +106,8 @@ public class BigIntArrayList implements List<Integer> {
 	}
 
 	@Override
-	public Integer get(int index) {
-		if(array[index].compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) >= 0) throw new ArithmeticException();
-		else return array[index].intValue();
+	public BigInteger get(int index) {
+		return array[index];
 	}
 
 	@Override
@@ -113,13 +127,13 @@ public class BigIntArrayList implements List<Integer> {
 	}
 
 	@Override
-	public Iterator<Integer> iterator() {		
-		return new Iterator<Integer>() {
+	public Iterator<BigInteger> iterator() {		
+		return new Iterator<BigInteger>() {
 			
 			@Override
-			public Integer next() {
+			public BigInteger next() {
 				if (this.hasNext()) {
-					return array[++iterator].intValue();
+					return array[++iterator];
 				}
 				else throw new NoSuchElementException();
 			}
@@ -135,7 +149,7 @@ public class BigIntArrayList implements List<Integer> {
 	public int lastIndexOf(Object o) {
 		int index=-1;
 		
-		for(int i=0; i<this.array.length; i++) {
+		for(int i=0; i<counter; i++) {
 			if (this.array[i].equals(o)) index = i;
 		}
 		
@@ -144,13 +158,13 @@ public class BigIntArrayList implements List<Integer> {
 	}
 
 	@Override
-	public ListIterator<Integer> listIterator() {
+	public ListIterator<BigInteger> listIterator() {
 		return listIterator(0);
 	}
 
 	@Override
-	public ListIterator<Integer> listIterator(int index) {
-		return new ListIterator<Integer>() {
+	public ListIterator<BigInteger> listIterator(int index) {
+		return new ListIterator<BigInteger>() {
 			
 			private boolean nextOrPreviousCalled = false;
 			private boolean addOrRemoveCalledSinceLastNoP = false;
@@ -162,8 +176,12 @@ public class BigIntArrayList implements List<Integer> {
 			}
 
 			@Override
-			public Integer next() {
-				if (this.hasNext()) return array[++newListIterator].intValue();
+			public BigInteger next() {
+				if (this.hasNext()) {
+					nextOrPreviousCalled = true;
+					addOrRemoveCalledSinceLastNoP = false;
+					return array[++newListIterator];				
+				}
 				else throw new NoSuchElementException();
 			}
 
@@ -173,8 +191,12 @@ public class BigIntArrayList implements List<Integer> {
 			}
 
 			@Override
-			public Integer previous() {
-				if (this.hasPrevious()) return array[--newListIterator].intValue();
+			public BigInteger previous() {
+				if (this.hasPrevious())  {
+					nextOrPreviousCalled = true;
+					addOrRemoveCalledSinceLastNoP = false;
+					return array[--newListIterator];
+				}
 				else throw new NoSuchElementException();
 			}
 
@@ -194,13 +216,14 @@ public class BigIntArrayList implements List<Integer> {
 				if (nextOrPreviousCalled && !addOrRemoveCalledSinceLastNoP) {
 					BigIntArrayList.this.remove(newListIterator);
 					addOrRemoveCalledSinceLastNoP = true;
+					nextOrPreviousCalled = false;
 				}
 				else throw new IllegalStateException();
 				
 			}
 
 			@Override
-			public void set(Integer e) {
+			public void set(BigInteger e) {
 				if (nextOrPreviousCalled && !addOrRemoveCalledSinceLastNoP) {
 					BigIntArrayList.this.set(newListIterator, e);
 				}
@@ -208,11 +231,12 @@ public class BigIntArrayList implements List<Integer> {
 			}
 
 			@Override
-			public void add(Integer e) {
+			public void add(BigInteger e) {
 				if (nextOrPreviousCalled && !addOrRemoveCalledSinceLastNoP) {
 					BigIntArrayList.this.add(newListIterator, e);
 					newListIterator++;
 					addOrRemoveCalledSinceLastNoP = true;
+					nextOrPreviousCalled = false;
 				}
 				else throw new IllegalStateException();			
 			}
@@ -224,7 +248,7 @@ public class BigIntArrayList implements List<Integer> {
 	public boolean remove(Object o) {
 		if(!this.contains(o)) return false;
 		
-		for(int i=0; i<this.array.length; i++) {
+		for(int i=0; i<this.counter; i++) {
 			if (this.array[i].equals(o)) {
 				this.remove(i);
 				i--;
@@ -235,14 +259,17 @@ public class BigIntArrayList implements List<Integer> {
 	}
 
 	@Override
-	public Integer remove(int index) {
+	public BigInteger remove(int index) {
 		BigInteger val = BigInteger.ZERO;
 		
-		for(int j=index; j<this.array.length; j++) { 
+		for(int j=index; j<this.counter; j++) { 
 			val = this.array[j];
 			this.array[j] = this.array[j+1];
 		}
-		return val.intValue();
+		
+		this.array[counter - 1] = null;
+		counter--;
+		return val;
 	}
 
 	@Override
@@ -259,7 +286,7 @@ public class BigIntArrayList implements List<Integer> {
 	@Override
 	public boolean retainAll(Collection<?> c) {
 		boolean changed = false;
-		for(int i=0; i<this.array.length; i++) {
+		for(int i=0; i<this.counter; i++) {
 			if(!c.contains(this.array[i])) {
 				this.remove(i);
 				i--;
@@ -270,29 +297,28 @@ public class BigIntArrayList implements List<Integer> {
 	}
 
 	@Override
-	public Integer set(int index, Integer element) {
+	public BigInteger set(int index, BigInteger element) {
 		if(index >= this.array.length) throw new IndexOutOfBoundsException();
 		else {
-			this.array[index] = BigInteger.ZERO;
-			this.array[index].add(BigInteger.valueOf(element));			
+			this.array[index] = element;			
 		}
-		return this.array[index].intValue();
+		return this.array[index];
 	}
 
 	@Override
 	public int size() {
-		return this.array.length;
+		return this.counter;
 	}
 
 	@Override
-	public List<Integer> subList(int fromIndex, int toIndex) {
-		if(fromIndex > this.array.length || toIndex > this.array.length) throw new IndexOutOfBoundsException();
-		else if (fromIndex < toIndex) throw new InvalidParameterException(); 
+	public List<BigInteger> subList(int fromIndex, int toIndex) {
+		if(fromIndex > this.counter || toIndex > this.counter) throw new IndexOutOfBoundsException();
+		else if (fromIndex > toIndex) throw new InvalidParameterException(); 
 		
-		List<Integer> list = new ArrayList<Integer>();
+		List<BigInteger> list = new ArrayList<BigInteger>();
 		
 		for(int i=fromIndex; i<toIndex; i++) {
-			list.add(this.array[i].intValue());
+			list.add(this.array[i]);
 		}
 		
 		return list;
